@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام طلبات المنتجات</title>
+  <!-- Bulma CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+  <!-- SweetAlert2 for beautiful alerts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section class="section">
+    <div class="container">
+      <h1 class="title has-text-centered">نظام طلبات المنتجات</h1>
+      
+      <div class="box">
+        <form id="orderForm">
+          <div class="field">
+            <label class="label" for="productName">اسم المنتج:</label>
+            <div class="control">
+              <input class="input" type="text" id="productName" required>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label class="label" for="quantity">الكمية:</label>
+            <div class="control">
+              <input class="input" type="number" id="quantity" required>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label class="label" for="customerName">اسم الزبون:</label>
+            <div class="control">
+              <input class="input" type="text" id="customerName" required>
+            </div>
+          </div>
+          
+          <div class="field">
+            <div class="control">
+              <button type="submit" class="button is-success">إنشاء الطلب</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      
+      <div class="box">
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input class="input" type="text" id="search" placeholder="0078XXXXXX">
+          </div>
+          <div class="control">
+            <a class="button is-info" onclick="searchOrder()">
+              بحث
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <button onclick="toggleOrdersTable()" class="button is-warning mb-4">إظهار / إخفاء الطلبات</button>
+      
+      <table class="table is-striped is-fullwidth" id="ordersTable">
+        <thead>
+          <tr>
+            <th>رقم الطلب</th>
+            <th>اسم المنتج</th>
+            <th>الكمية</th>
+            <th>اسم الزبون</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    // Function to create a new order ID
+    function createOrderId() {
+      var orderId = '0078';
+      var existingOrders = JSON.parse(localStorage.getItem('orders')) || [];
+      if (existingOrders.length > 0) {
+        var lastOrderId = existingOrders[existingOrders.length - 1].orderId;
+        var nextId = parseInt(lastOrderId.slice(4)) + 1;
+        orderId += nextId.toString().padStart(2, '0');
+      } else {
+        orderId += '01';
+      }
+      return orderId;
+    }
+
+    // Form submission handler
+    document.getElementById('orderForm').onsubmit = function(event) {
+      event.preventDefault();
+      
+      var productName = document.getElementById('productName').value;
+      var quantity = document.getElementById('quantity').value;
+      var customerName = document.getElementById('customerName').value;
+      var orderId = createOrderId();
+      
+      var order = { orderId: orderId, productName: productName, quantity: quantity, customerName: customerName };
+      var existingOrders = JSON.parse(localStorage.getItem('orders')) || [];
+      existingOrders.push(order);
+      localStorage.setItem('orders', JSON.stringify(existingOrders));
+      
+      Swal.fire({
+        title: 'تم إنشاء الطلب بنجاح!',
+        text: 'رقم الطلب: ' + orderId,
+        icon: 'success',
+        confirmButtonText: 'حسنًا'
+      });
+      showOrders();
+    };
+
+    // Function to show all orders
+    function showOrders() {
+      var orders = JSON.parse(localStorage.getItem('orders')) || [];
+      var tableBody = document.getElementById('ordersTable').getElementsByTagName('tbody')[0];
+      tableBody.innerHTML = '';
+      orders.forEach(function(order) {
+        var row = tableBody.insertRow();
+        row.innerHTML = `
+          <td>${order.orderId}</td>
+          <td>${order.productName}</td>
+          <td>${order.quantity}</td>
+          <td>${order.customerName}</td>
+          <td><button class="delete" onclick="deleteOrder('${order.orderId}')"><i class="fas fa-trash-alt"></i></button></td>
+        `;
+      });
+    }
+
+    // Function to search for an order
+    function searchOrder() {
+      var searchValue = document.getElementById('search').value;
+      var orders = JSON.parse(localStorage.getItem('orders')) || [];
+      var foundOrder = orders.find(order => order.orderId === searchValue);
+      var tableBody = document.getElementById('ordersTable').getElementsByTagName('tbody')[0];
+      tableBody.innerHTML = '';
+      if (foundOrder) {
+        var row = tableBody.insertRow();
+        row.innerHTML = `
+          <td>${foundOrder.orderId}</td>
+          <td>${foundOrder.productName}</td>
+          <td>${foundOrder.quantity}</td>
+          <td>${foundOrder.customerName}</td>
+          <td><button class="delete" onclick="deleteOrder('${foundOrder.orderId}')"><i class="fas fa-trash-alt"></i></button></td>
+        `;
+      } else {
+        Swal.fire({
+          title: 'لم يتم العثور على طلب!',
+          text: 'لا يوجد طلب برقم: ' + searchValue,
+          icon: 'error',
+          confirmButtonText: 'حسنًا'
+        });
+      }
+    }
+
+    // Function to toggle the orders table visibility
+    function toggleOrdersTable() {
+      var table = document.getElementById('ordersTable');
+      table.style.display = table.style.display === 'none' ? 'table' : 'none';
+    }
+
+    // Function to delete an order
+    function deleteOrder(orderId) {
+      Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "لا يمكنك التراجع عن هذا!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'نعم، احذفه!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          var orders = JSON.parse(localStorage.getItem('orders')) || [];
+          var filteredOrders = orders.filter(order => order.orderId !== orderId);
+          localStorage.setItem('orders', JSON.stringify(filteredOrders));
+          showOrders(); // Refresh the orders table
+          Swal.fire(
+            'تم الحذف!',
+            'تم حذف الطلب.',
+            'success'
+          )
+        }
+      })
+    }
+
+    // Initially show all orders
+    showOrders();
+  </script>
+</body>
+</html>
